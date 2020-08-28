@@ -1,5 +1,4 @@
 from __future__ import print_function
-import neat
 import time 
 import os
 import random
@@ -17,6 +16,7 @@ PIPE_IMG =pygame.transform.scale2x(pygame.image.load(os.path.join('imgs', 'pipe.
 BASE_IMG =pygame.transform.scale2x(pygame.image.load(os.path.join('imgs', 'base.png')))
 BG_IMG =pygame.transform.scale2x(pygame.image.load(os.path.join('imgs', 'bg.png')))
 STAT_FONT = pygame.font.SysFont("comicsans", 50)
+END_FONT = pygame.font.SysFont("comicsans", 80)
 
 class Bird:
 	IMGS = BIRD_IMGS
@@ -161,18 +161,23 @@ def drawWindow(win, bird, pipes, base, score):
 	pygame.display.update()
 
 #gameloop for the game
+#gets the parameter, soo I don't need to create an other same sized window, and reset the caption
 def GameOver(win, score):
 	win.blit(BG_IMG, (0,0))
-	text = STAT_FONT.render("Score: " + str(score), 1, (255, 255, 255))
-	win.blit(text, (int(WIDTH- text.get_width() / 2 ), int(HEIGHT / 2 )))
+	text = END_FONT.render("Score: " + str(score), 1, (255, 255, 255))
+	win.blit(text, (int((WIDTH - text.get_width()) / 2 ), int(HEIGHT / 2 )))
+	pygame.display.update()
+	pygame.time.wait(2500)
+	pygame.quit()
+	quit()
 
-def main():
+def Gameloop(win):
 	bird = Bird(230, 350)
 	base = Base(730)
 	pipe_gap = 550
 	score = 0
 	pipes = [Pipe(pipe_gap)]
-	win = pygame.display.set_mode((WIDTH, HEIGHT))
+	#win = pygame.display.set_mode((WIDTH, HEIGHT))
 	add_pipe = False
 	clock = pygame.time.Clock()
 	running = True
@@ -183,7 +188,7 @@ def main():
 				running = False
 				pygame.quit()
 				quit()
-			if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE :
+			if (event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE ) or event.type == pygame.MOUSEBUTTONDOWN:
 				bird.jump()
 
 		rem = []
@@ -192,7 +197,7 @@ def main():
 		for pipe in pipes:
 			if pipe.collide(bird):
 				running = False
-				GameOver(win, score)
+				
 			if bird.y < 0 or bird.y > HEIGHT - 110:
 				running = False
 				pygame.quit()
@@ -210,7 +215,61 @@ def main():
 		for r in rem:
 			pipes.remove(r)
 		drawWindow(win, bird, pipes, base, score )
+	GameOver(win, score)
 
+def isMouseInRect(rect):
+	(x,y) = pygame.mouse.get_pos()
+	return rect.x  < x and rect.x + rect.w > x and rect.y < y and rect.y + rect.h > y
+# pre game menu with hover btn
+# the btn is constructed of more rects
+# if player hovers -> it changes color
+# if clicked game starts
+def MainMenu():
+	#setting up everything
+	win = pygame.display.set_mode((WIDTH, HEIGHT))
+	pygame.display.set_caption("Floppy Bird")
+		
+	menu = True
+	clock = pygame.time.Clock()
+	playBtnPassiveCol = (200, 200, 200)
+	playBtnActicveCol = (150, 150, 150)
+	rectSize = (100, 120)
+	startpoint = [WIDTH / 2 - rectSize[0] / 2, HEIGHT / 2 - rectSize[1] / 2]
+	rectList = []
+	for i in range(6):
+		rect = None
+		if i  < 3:
+			rect = pygame.Rect((startpoint[0], startpoint[1] + i * 20),  (60 + (i * 20), 20) )
+		else :
+			rect = pygame.Rect((startpoint[0], startpoint[1] + (i * 20)),  (100 - ((i  % 3) * 20), 20) )
+		rectList.append(rect)
+	active = False
+	while menu :
+		# runs on lover FPS this is just a Menu, could adjust it for smoothness
+		clock.tick(15)
+		win.blit(BG_IMG, (0,0))
+		pygame.draw.rect(win,(240, 240, 240) , pygame.Rect(startpoint[0] - 20, startpoint[1] - 20, rectSize[0] + 40, rectSize[1] + 40))
+		#check if mouse is in any of  the rects and after we draw the rects acordingly
+		for rect in rectList:
+			active = active or isMouseInRect(rect)
+		for rect in rectList:
+			if active:
+				pygame.draw.rect(win, playBtnActicveCol, rect)
+			else:
+				pygame.draw.rect(win, playBtnPassiveCol, rect)
+		pygame.display.update()
+		#standard event loop, checks for quiting and the btn press
+		for event in pygame.event.get() :
+			if event.type == pygame.QUIT :
+				menu = False
+				pygame.quit()
+				quit()
+			if event.type == pygame.MOUSEBUTTONDOWN and active:
+				#this leads to starting the game
+				menu = False
+				break
+		active = False
 
+	Gameloop(win)
 if __name__ == '__main__':
-	main()
+	MainMenu()
